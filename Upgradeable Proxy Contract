@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+contract Logic1{
+    uint public num;
+    address public Owner;
+    mapping (address=>uint) public balance;
+    event logic1(address indexed from, uint amount);
+    function SetOwner(address _owner) public{
+        require(Owner==address(0),"Owner is already set");
+        Owner=_owner;
+    }
+    function setNum1(uint _num) public {
+        num=_num;
+    }
+
+    function deposite() public payable{
+        // require(balance[msg.sender]>=msg.value,"Ether is high");
+            balance[msg.sender]+=msg.value;        
+            emit logic1(msg.sender,msg.value);
+    }
+
+}
+contract Logic2{
+    uint public num;
+    address public Owner;
+    mapping (address=>uint) public balance;
+    event logic2(address indexed _from,uint _amount);
+    function SetOwner(address _owner) public {
+        require(Owner==address(0),"Owner is already set");
+        Owner=_owner;
+    }
+    function setNum2(uint _num) public {
+        num=_num*_num;
+    }
+
+    function deposite() public payable{
+        // require(balance[msg.sender]>=msg.value,"Ether is high");
+            balance[msg.sender]+=msg.value;        
+    }
+    function withdraw(uint _amount) public{
+        require(balance[msg.sender]>=_amount,"Ether does not exist");
+        balance[msg.sender]-=_amount;
+        payable(msg.sender).transfer(_amount);
+        emit logic2(msg.sender,_amount);
+    }
+}
+contract Proxy{
+    uint public num;
+    address public Owner;
+    mapping (address=>uint) public balance;
+
+    address public implement;
+    event UpgradeEvent(address indexed _Implementation,address indexed _upgrade_address);
+    event Fallback(address _from,uint _amount,bool success,bytes _data);
+    constructor (address _newProxy_Logic){
+        Owner=msg.sender;
+        implement=_newProxy_Logic;
+    }
+    modifier Admin(){
+        require(msg.sender==Owner,"You are not Owner");
+        _;
+    }
+    function Upgrade(address _newImplementAddress) public Admin{
+        require(_newImplementAddress != address(0), "invalid implementation");
+        implement=_newImplementAddress;
+        emit UpgradeEvent(msg.sender,_newImplementAddress);
+    }
+    receive() external payable { }
+
+    fallback() external payable {
+        (bool success,bytes memory data)=implement.delegatecall(msg.data);
+        require(success,"failed");
+        emit Fallback(msg.sender,msg.value,success,msg.data);
+    }
+}
